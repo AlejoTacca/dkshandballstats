@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#0a0e1a"/>
+  <title>HandballIQ — Scouting Táctico</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     HOME — 3 solapas
+═══════════════════════════════════════ -->
+<div id="screen-home" class="screen active">
+  <header class="home-header">
+    <div class="logo-mark">⬡</div>
+    <div>
+      <h1>HandballIQ</h1>
+      <p class="tagline">SCOUTING TÁCTICO</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-header-icon" onclick="openSettings()" title="Configuración">⚙️</button>
+      <button class="btn-new-match-header" onclick="openMatchSetup()">▶ PARTIDO</button>
+    </div>
+  </header>
+
+  <nav class="home-tabs">
+    <button class="tab-btn active" data-tab="tab-squad" onclick="switchTab('tab-squad',this)">👥 PLANTILLA</button>
+    <button class="tab-btn" data-tab="tab-history" onclick="switchTab('tab-history',this)">📋 HISTORIAL</button>
+    <button class="tab-btn" data-tab="tab-tournament" onclick="switchTab('tab-tournament',this)">🏆 TORNEO</button>
+  </nav>
+
+  <!-- TAB: PLANTILLA -->
+  <div id="tab-squad" class="tab-content active">
+    <div class="tab-inner">
+      <div class="team-info-row">
+        <div class="team-logo-upload" id="teamLogoUpload" onclick="document.getElementById('teamLogoInput').click()">
+          <img id="teamLogoImg" src="" alt="" style="display:none"/>
+          <span id="teamLogoPlaceholder">🛡️</span>
+        </div>
+        <input type="file" id="teamLogoInput" accept="image/*" style="display:none"/>
+        <div class="team-name-block">
+          <input type="text" id="squadTeamName" class="team-name-input" placeholder="Nombre del equipo" maxlength="24"/>
+          <div class="squad-count-hint" id="squadCountHint">0 jugadoras</div>
+        </div>
+      </div>
+      <div id="squadList" class="squad-list"></div>
+      <button class="btn-add-player" onclick="openSquadEditor(null)">
+        <span>+</span> AÑADIR JUGADORA
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB: HISTORIAL -->
+  <div id="tab-history" class="tab-content">
+    <div class="tab-inner" id="historyList"></div>
+  </div>
+
+  <!-- TAB: TORNEO -->
+  <div id="tab-tournament" class="tab-content">
+    <div class="tab-inner" id="tournamentBody"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MATCH SETUP — convocatoria + orden
+═══════════════════════════════════════ -->
+<div id="screen-match-setup" class="screen">
+  <div class="nav-header">
+    <button class="btn-back" onclick="showScreen('screen-home')">← VOLVER</button>
+    <h2>NUEVO PARTIDO</h2>
+    <div style="width:60px"></div>
+  </div>
+  <div class="setup-body">
+    <!-- Rival -->
+    <section class="setup-section">
+      <label class="section-label">RIVAL</label>
+      <div class="input-group">
+        <span class="input-icon">✈️</span>
+        <input type="text" id="rivalTeamName" placeholder="Nombre del equipo rival" maxlength="20"/>
+      </div>
+    </section>
+
+    <!-- Visual court + player list side by side -->
+    <section class="setup-section">
+      <label class="section-label">TITULARES — arrastrá a la cancha</label>
+      <p class="setup-hint">Convocadas seleccionadas: <span id="calledCount">0</span> · Arrastrá cada jugadora a su posición</p>
+
+      <div class="lineup-builder">
+        <!-- Mini court with drop slots -->
+        <div class="setup-court-wrap">
+          <svg class="setup-court-svg" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="280" fill="#1a3a5c" rx="4"/>
+            <rect x="5" y="5" width="190" height="270" fill="none" stroke="white" stroke-width="1.5" rx="2"/>
+            <path d="M 70 5 A 65 65 0 0 1 130 5" fill="none" stroke="white" stroke-width="1.2"/>
+            <path d="M 48 5 A 92 92 0 0 1 152 5" fill="none" stroke="white" stroke-width="1" stroke-dasharray="4,3"/>
+            <line x1="88" y1="5" x2="112" y2="5" stroke="white" stroke-width="2.5"/>
+            <circle cx="100" cy="40" r="2" fill="white"/>
+            <line x1="5" y1="140" x2="195" y2="140" stroke="white" stroke-width="1" stroke-dasharray="6,5"/>
+            <rect x="5" y="105" width="8" height="50" fill="none" stroke="white" stroke-width="1"/>
+            <rect x="187" y="105" width="8" height="50" fill="none" stroke="white" stroke-width="1"/>
+          </svg>
+          <!-- Drop slot tokens positioned over the court -->
+          <div class="setup-court-slots" id="setupCourtSlots"></div>
+        </div>
+
+        <!-- Convocatoria scrollable list -->
+        <div class="setup-player-list-wrap">
+          <div class="setup-list-header">CONVOCADAS</div>
+          <div id="setupPlayerList" class="setup-player-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Subs -->
+    <section class="setup-section">
+      <label class="section-label">SUPLENTES <span class="label-count" id="subsCount">0</span></label>
+      <div id="subsList" class="subs-chips"></div>
+    </section>
+
+    <button class="btn-start-match" onclick="startMatch()">INICIAR PARTIDO →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MATCH SCREEN
+═══════════════════════════════════════ -->
+<div id="screen-match" class="screen">
+  <div class="match-topbar">
+    <div class="scoreboard">
+      <div class="team-score" id="scoreHome">
+        <img id="homeLogoSmall" src="" alt="" class="team-logo-small" style="display:none"/>
+        <span class="team-abbr" id="homeAbbr">???</span>
+        <span class="score-num" id="scoreHomeNum">0</span>
+      </div>
+      <div class="timer-block">
+        <div class="timer-display" id="timerDisplay">25:00</div>
+        <div class="half-label" id="halfLabel">1ª PARTE</div>
+      </div>
+      <div class="team-score" id="scoreAway">
+        <span class="score-num" id="scoreAwayNum">0</span>
+        <span class="team-abbr" id="awayAbbr">???</span>
+      </div>
+    </div>
+    <div class="top-controls">
+      <button class="btn-timer" id="btnTimer" onclick="toggleTimer()">▶ INICIAR</button>
+      <button class="btn-half" onclick="manualToggleHalf()">2ª PARTE</button>
+      <button class="btn-stats-toggle" onclick="showScreen('screen-stats')">📊</button>
+    </div>
+  </div>
+
+  <div class="court-container">
+    <svg class="handball-court" viewBox="0 0 400 340" xmlns="http://www.w3.org/2000/svg">
+      <rect width="400" height="340" fill="#1a3a5c" rx="4"/>
+      <rect x="10" y="10" width="380" height="320" fill="none" stroke="white" stroke-width="2.5" rx="3"/>
+      <path d="M 140 10 A 130 130 0 0 1 260 10" fill="none" stroke="white" stroke-width="2"/>
+      <path d="M 95 10 A 185 185 0 0 1 305 10" fill="none" stroke="white" stroke-width="1.5" stroke-dasharray="8,6"/>
+      <line x1="175" y1="10" x2="225" y2="10" stroke="white" stroke-width="4"/>
+      <circle cx="200" cy="75" r="3" fill="white"/>
+      <line x1="10" y1="170" x2="390" y2="170" stroke="white" stroke-width="1.5" stroke-dasharray="10,8"/>
+      <rect x="10" y="125" width="15" height="90" fill="none" stroke="white" stroke-width="1.5"/>
+      <rect x="375" y="125" width="15" height="90" fill="none" stroke="white" stroke-width="1.5"/>
+    </svg>
+    <div class="court-players" id="courtPlayers"></div>
+  </div>
+
+  <div class="bench-area">
+    <div class="bench-label">BANQUILLO</div>
+    <div class="bench-players" id="benchPlayers"></div>
+  </div>
+
+  <div class="rival-controls">
+    <button class="btn-rival-goal" onclick="rivalGoal()">+ GOL RIVAL</button>
+    <button class="btn-finish-match" onclick="confirmFinishMatch()">✓ FIN</button>
+    <button class="btn-back-setup" onclick="confirmBackToSetup()">⚙</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     STATS SCREEN
+═══════════════════════════════════════ -->
+<div id="screen-stats" class="screen">
+  <div class="nav-header">
+    <button class="btn-back" onclick="showScreen('screen-match')">← PARTIDO</button>
+    <h2>ESTADÍSTICAS</h2>
+    <button class="btn-export" onclick="exportCurrentPDF()">📄 PDF</button>
+  </div>
+  <div class="stats-body" id="statsBody"></div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     HISTORY DETAIL
+═══════════════════════════════════════ -->
+<div id="screen-history-detail" class="screen">
+  <div class="nav-header">
+    <button class="btn-back" onclick="showScreen('screen-home')">← HISTORIAL</button>
+    <h2 id="historyDetailTitle">PARTIDO</h2>
+    <button class="btn-export" onclick="exportHistoryPDF()">📄 PDF</button>
+  </div>
+  <div class="stats-body" id="historyDetailBody"></div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     HALF TIME BANNER
+═══════════════════════════════════════ -->
+<div class="half-change-banner" id="halfChangeBanner">
+  <div class="half-change-icon">⏱️</div>
+  <div class="half-change-title">FIN 1ª PARTE</div>
+  <div class="half-change-sub">Descanso · El marcador se mantiene</div>
+  <button class="btn-start-second" onclick="startSecondHalf()">INICIAR 2ª PARTE →</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MATCH FINISHED BANNER
+═══════════════════════════════════════ -->
+<div class="half-change-banner" id="matchFinishedBanner">
+  <div class="half-change-icon">🏁</div>
+  <div class="half-change-title">PARTIDO FINALIZADO</div>
+  <div class="half-change-sub" id="finalScoreText"></div>
+  <button class="btn-start-second" onclick="goToFinalStats()">VER ESTADÍSTICAS →</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     BOTTOM SHEET: ACCIONES JUGADORA
+═══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="bottomSheetOverlay" onclick="closeActionSheet()"></div>
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-player-info" id="sheetPlayerInfo"></div>
+  <div class="action-grid" id="actionGrid"></div>
+  <button class="btn-sheet-close" onclick="closeActionSheet()">CANCELAR</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     BOTTOM SHEET: EDITOR PLANTILLA
+═══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="squadEditorOverlay" onclick="closeSquadEditor()"></div>
+<div class="bottom-sheet" id="squadEditor">
+  <div class="sheet-handle"></div>
+  <div id="squadEditorBody" class="squad-editor-body"></div>
+  <div class="sheet-footer-btns">
+    <button class="btn-sheet-close btn-save-squad" onclick="saveSquadPlayer()">💾 GUARDAR</button>
+    <button class="btn-sheet-close btn-delete-squad" id="btnDeleteSquad" onclick="deleteSquadPlayer()">🗑 ELIMINAR</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     BOTTOM SHEET: SLOT PLAYER PICKER
+═══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="slotPickerOverlay" onclick="closeSlotPicker()"></div>
+<div class="bottom-sheet" id="slotPicker">
+  <div class="sheet-handle"></div>
+  <div class="slot-picker-title" id="slotPickerTitle">Elegí la jugadora</div>
+  <div id="slotPickerList" class="slot-picker-list"></div>
+  <button class="btn-sheet-close" onclick="closeSlotPicker()">CANCELAR</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     BOTTOM SHEET: IN-MATCH PLAYER OPTIONS
+═══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="playerOptionsOverlay" onclick="closePlayerOptions()"></div>
+<div class="bottom-sheet" id="playerOptionsSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-player-info" id="playerOptionsInfo"></div>
+  <div class="player-options-grid" id="playerOptionsGrid"></div>
+  <button class="btn-sheet-close" onclick="closePlayerOptions()">CANCELAR</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     BOTTOM SHEET: POSITION CHANGE
+═══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="posChangeOverlay" onclick="closePosChange()"></div>
+<div class="bottom-sheet" id="posChangeSheet">
+  <div class="sheet-handle"></div>
+  <div class="slot-picker-title" id="posChangeTitle">Cambiar posición</div>
+  <div class="pos-change-grid" id="posChangeGrid"></div>
+  <button class="btn-sheet-close" onclick="closePosChange()">CANCELAR</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     BOTTOM SHEET: SUBSTITUTION — PICK BENCH
+═══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="subPickOverlay" onclick="closeSubPick()"></div>
+<div class="bottom-sheet" id="subPickSheet">
+  <div class="sheet-handle"></div>
+  <div class="slot-picker-title" id="subPickTitle">¿Quién entra?</div>
+  <div id="subPickList" class="slot-picker-list"></div>
+  <button class="btn-sheet-close" onclick="closeSubPick()">CANCELAR</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SETTINGS SHEET
+═══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="bottom-sheet" id="settingsSheet">
+  <div class="sheet-handle"></div>
+  <div class="settings-title">⚙️ CONFIGURACIÓN</div>
+
+  <div class="settings-section-label">DATOS Y BACKUP</div>
+
+  <button class="settings-row" onclick="exportBackup()">
+    <span class="settings-row-icon">📤</span>
+    <div class="settings-row-text">
+      <div class="settings-row-label">Exportar backup</div>
+      <div class="settings-row-desc">Descarga un archivo .json con toda tu data</div>
+    </div>
+    <span class="settings-row-arrow">›</span>
+  </button>
+
+  <button class="settings-row" onclick="document.getElementById('importFileInput').click()">
+    <span class="settings-row-icon">📥</span>
+    <div class="settings-row-text">
+      <div class="settings-row-label">Importar backup</div>
+      <div class="settings-row-desc">Restaurar desde un archivo .json</div>
+    </div>
+    <span class="settings-row-arrow">›</span>
+  </button>
+  <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importBackup(event)"/>
+
+  <div class="settings-section-label" style="margin-top:16px">PELIGRO</div>
+
+  <button class="settings-row danger" onclick="confirmClearAll()">
+    <span class="settings-row-icon">🗑️</span>
+    <div class="settings-row-text">
+      <div class="settings-row-label">Borrar todos los datos</div>
+      <div class="settings-row-desc">Elimina plantilla, historial y partidos</div>
+    </div>
+    <span class="settings-row-arrow">›</span>
+  </button>
+
+  <div class="settings-storage-info" id="settingsStorageInfo"></div>
+
+  <button class="btn-sheet-close" style="margin-top:8px" onclick="closeSettings()">CERRAR</button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-icon" id="modalIcon">⚠️</div>
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <button class="btn-modal-ok" onclick="closeModal()">OK</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
