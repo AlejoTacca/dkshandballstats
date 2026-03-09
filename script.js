@@ -741,10 +741,73 @@ function finishMatchAuto() {
   if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
   activeMatch.timerRunning=false; activeMatch.finished=true;
   activeMatch.players.forEach(p=>{ if(p.onCourt&&p.courtEntry!==null){ p.timeOnCourt+=matchElapsed()-p.courtEntry; p.courtEntry=null; } });
+
+  // Calculate and store auto MVP score
+  activeMatch.mvpAuto   = calcMvpAuto(activeMatch);
+  activeMatch.mvpJurado = null;
+
   pushHistory(JSON.parse(JSON.stringify(activeMatch)));
   clearMatch();
+
+  // Populate finished banner
   document.getElementById('finalScoreText').textContent=`${activeMatch.myTeamName} ${activeMatch.scoreHome} — ${activeMatch.scoreAway} ${activeMatch.rivalTeamName}`;
+  renderMvpBanner(activeMatch);
+  document.getElementById('mvpJuradoName').textContent='—';
   document.getElementById('matchFinishedBanner').classList.add('show');
+}
+
+// ── MVP calculation ──
+function calcMvpAuto(match) {
+  let best=null, bestScore=-1;
+  match.players.forEach(p=>{
+    const score = p.stats.goals*4 + p.stats.assists*3 + p.stats.saves*3 + p.stats.steals*2
+                - p.stats.turnovers*2 - p.stats.yellowCards - p.stats.suspensions*2 - p.stats.redCards*4
+                + Math.round(p.timeOnCourt/60)*0.1;
+    p._mvpScore = Math.round(score*10)/10;
+    if(score>bestScore){ bestScore=score; best=p; }
+  });
+  return best ? best.id : null;
+}
+
+function renderMvpBanner(match) {
+  const pid = match.mvpAuto;
+  const p   = pid ? match.players.find(x=>x.id===pid) : null;
+  const block = document.getElementById('mvpAutoBlock');
+  if(!p){ block.style.display='none'; return; }
+  block.style.display='block';
+  document.getElementById('mvpAutoPlayer').innerHTML=`
+    <div class="mvp-photo">${p.photo?`<img src="${p.photo}"/>`:(p.number?'#'+p.number:initials(p.name))}</div>
+    <div>
+      <div class="mvp-name">⭐ ${p.name}</div>
+      <div class="mvp-stats-line">⚽${p.stats.goals} 🎯${p.stats.assists} 🧤${p.stats.saves} ✋${p.stats.steals} · Score ${p._mvpScore}</div>
+    </div>`;
+}
+
+// ── MVP Jurado picker ──
+function openMvpJuradoPicker() {
+  const list=document.getElementById('mvpPickerList'); list.innerHTML='';
+  activeMatch.players.forEach(p=>{
+    const item=document.createElement('div'); item.className='picker-item';
+    item.innerHTML=`<div class="picker-photo">${p.photo?`<img src="${p.photo}"/>`:(p.number?'#'+p.number:initials(p.name))}</div><div class="picker-name">${p.name}</div><div class="picker-pos">${p.positions.filter(x=>x&&x!=='--'&&x!=='SUP').join('/')}</div>`;
+    item.onclick=()=>assignMvpJurado(p.id);
+    list.appendChild(item);
+  });
+  document.getElementById('mvpPickerOverlay').classList.add('active');
+  document.getElementById('mvpPickerSheet').classList.add('active');
+}
+function closeMvpJuradoPicker() {
+  document.getElementById('mvpPickerOverlay').classList.remove('active');
+  document.getElementById('mvpPickerSheet').classList.remove('active');
+}
+function assignMvpJurado(pid) {
+  closeMvpJuradoPicker();
+  activeMatch.mvpJurado=pid;
+  // Update history with mvpJurado
+  const hist=getHistory(); const idx=hist.findIndex(m=>m.id===activeMatch.id);
+  if(idx>=0){ hist[idx].mvpJurado=pid; saveHistory(hist); }
+  const p=activeMatch.players.find(x=>x.id===pid);
+  document.getElementById('mvpJuradoName').textContent=p?p.name:'—';
+  showToast(`🏅 MVP del jurado: ${p?.name}`);
 }
 
 function goToFinalStats() {
@@ -760,46 +823,59 @@ function confirmBackToSetup() {
 }
 
 // ══════════════════════════════════════════════
-// STATS
+// STATS — full enriched render
 // ══════════════════════════════════════════════
 function renderStatsForMatch(match, targetId) {
   if(!match) return;
   const body=document.getElementById(targetId); body.innerHTML='';
-  const totalGoals=match.players.reduce((a,p)=>a+p.stats.goals,0);
-  const totalShots=match.players.reduce((a,p)=>a+p.stats.goals+p.stats.misses,0);
+  const totalGoals  =match.players.reduce((a,p)=>a+p.stats.goals,0);
+  const totalShots  =match.players.reduce((a,p)=>a+p.stats.goals+p.stats.misses,0);
   const totalAssists=match.players.reduce((a,p)=>a+p.stats.assists,0);
-  const totalSaves=match.players.reduce((a,p)=>a+p.stats.saves,0);
-  const totalTO=match.players.reduce((a,p)=>a+p.stats.turnovers,0);
-  const totalSteals=match.players.reduce((a,p)=>a+p.stats.steals,0);
+  const totalSaves  =match.players.reduce((a,p)=>a+p.stats.saves,0);
+  const totalTO     =match.players.reduce((a,p)=>a+p.stats.turnovers,0);
+  const totalSteals =match.players.reduce((a,p)=>a+p.stats.steals,0);
   const eff=totalShots>0?Math.round(totalGoals/totalShots*100):0;
   const poss=totalSteals+totalTO>0?Math.round(totalSteals/(totalSteals+totalTO)*100):0;
   const dateStr=new Date(match.date).toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'});
-  body.innerHTML+=`
-    <div class="stat-card" style="text-align:center;padding:20px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:.65rem;letter-spacing:.2em;color:var(--text-muted);margin-bottom:8px">${dateStr.toUpperCase()}</div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:16px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700">${match.myTeamName}</div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:900;color:var(--accent-teal)">${match.scoreHome} — ${match.scoreAway}</div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;color:var(--text-secondary)">${match.rivalTeamName}</div>
-      </div>
+
+  // ── 1. Score ──
+  body.innerHTML+=`<div class="stat-card" style="text-align:center;padding:20px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:.65rem;letter-spacing:.2em;color:var(--text-muted);margin-bottom:8px">${dateStr.toUpperCase()}</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700">${match.myTeamName}</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:900;color:var(--accent-teal)">${match.scoreHome} — ${match.scoreAway}</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;color:var(--text-secondary)">${match.rivalTeamName}</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-card-title">RESUMEN DE EQUIPO</div>
-      <div class="team-overview">
-        ${[['GOLES',totalGoals,'teal'],['RECIBIDOS',match.scoreAway,''],['PARADAS',totalSaves,''],['ASISTENCIAS',totalAssists,''],['PÉRDIDAS',totalTO,'red'],['ROBOS',totalSteals,'teal']].map(([l,v,c])=>`<div class="overview-stat"><div class="overview-num ${c}">${v}</div><div class="overview-label">${l}</div></div>`).join('')}
-      </div>
+  </div>`;
+
+  // ── 2. MVP card ──
+  body.innerHTML += buildMvpCard(match);
+
+  // ── 3. Team overview ──
+  body.innerHTML+=`<div class="stat-card">
+    <div class="stat-card-title">RESUMEN DE EQUIPO</div>
+    <div class="team-overview">
+      ${[['GOLES',totalGoals,'teal'],['RECIBIDOS',match.scoreAway,''],['PARADAS',totalSaves,''],['ASISTENCIAS',totalAssists,''],['PÉRDIDAS',totalTO,'red'],['ROBOS',totalSteals,'teal']].map(([l,v,c])=>`<div class="overview-stat"><div class="overview-num ${c}">${v}</div><div class="overview-label">${l}</div></div>`).join('')}
     </div>
-    <div class="stat-card">
-      <div class="stat-card-title">EFICACIA EN LANZAMIENTO</div>
-      <div class="efficiency-container">
-        <div class="efficiency-label"><span>Goles / Lanzamientos (${totalGoals}/${totalShots})</span><span class="efficiency-pct">${eff}%</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${eff}%"></div></div>
-      </div>
-      <div class="efficiency-container" style="margin-top:12px">
-        <div class="efficiency-label"><span>Posesión (Robos vs Pérdidas)</span><span class="efficiency-pct">${poss}%</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${poss}%"></div></div>
-      </div>
-    </div>`;
+  </div>`;
+
+  // ── 4. Position efficiency bars ──
+  body.innerHTML += buildPositionMapCard(match);
+
+  // ── 5. Efficiency bars ──
+  body.innerHTML+=`<div class="stat-card">
+    <div class="stat-card-title">EFICACIA EN LANZAMIENTO</div>
+    <div class="efficiency-container">
+      <div class="efficiency-label"><span>Goles / Lanzamientos (${totalGoals}/${totalShots})</span><span class="efficiency-pct">${eff}%</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${eff}%"></div></div>
+    </div>
+    <div class="efficiency-container" style="margin-top:12px">
+      <div class="efficiency-label"><span>Posesión (Robos vs Pérdidas)</span><span class="efficiency-pct">${poss}%</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${poss}%"></div></div>
+    </div>
+  </div>`;
+
+  // ── 7. Player stats ──
   const sorted=[...match.players].sort((a,b)=>b.stats.goals-a.stats.goals||b.stats.assists-a.stats.assists);
   body.innerHTML+=`<div class="stat-card"><div class="stat-card-title">ESTADÍSTICAS POR JUGADORA</div>
     ${sorted.map(p=>{ const t=p.timeOnCourt; const ph=p.photo?`<img src="${p.photo}"/>`:(p.number?'#'+p.number:initials(p.name)); return `<div class="player-stat-row">
@@ -813,7 +889,201 @@ function renderStatsForMatch(match, targetId) {
       </div>
     </div>`; }).join('')}
   </div>`;
+
+  // ── 8. Weak points ──
+  body.innerHTML += buildWeakPointsCard(match);
 }
+
+// ── MVP card builder ──
+function buildMvpCard(match) {
+  const autoId   = match.mvpAuto   || calcMvpAuto(match);
+  const juradoId = match.mvpJurado || null;
+  const pAuto    = autoId   ? match.players.find(x=>x.id===autoId)   : null;
+  const pJurado  = juradoId ? match.players.find(x=>x.id===juradoId) : null;
+  if(!pAuto) return '';
+
+  // Recalc scores if missing
+  if(!pAuto._mvpScore) calcMvpAuto(match);
+  const topPlayers=[...match.players].sort((a,b)=>(b._mvpScore||0)-(a._mvpScore||0)).slice(0,3);
+  const maxScore=topPlayers[0]?._mvpScore||1;
+
+  let html=`<div class="mvp-stat-card"><div class="mvp-stat-card-title">⭐ MVP DEL PARTIDO</div>`;
+
+  // Auto MVP row
+  html+=`<div class="mvp-row" style="margin-bottom:14px">
+    <div class="mvp-photo">${pAuto.photo?`<img src="${pAuto.photo}"/>`:(pAuto.number?'#'+pAuto.number:initials(pAuto.name))}</div>
+    <div style="flex:1">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:900;color:var(--accent-teal)">${pAuto.name} <span style="font-size:.7rem;color:var(--text-muted)">AUTO</span></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:2px">⚽${pAuto.stats.goals} 🎯${pAuto.stats.assists} 🧤${pAuto.stats.saves} ✋${pAuto.stats.steals} 🔄${pAuto.stats.turnovers}</div>
+    </div>
+  </div>`;
+
+  // Top 3 score bars
+  topPlayers.forEach(p=>{
+    const pct=Math.round((p._mvpScore||0)/maxScore*100);
+    html+=`<div class="mvp-row">
+      <div class="mvp-badge">${shortName(p.name)}</div>
+      <div class="mvp-score-bar"><div class="mvp-score-fill" style="width:${pct}%"></div></div>
+      <div class="mvp-score-val">${p._mvpScore||0}</div>
+    </div>`;
+  });
+
+  // Jurado MVP
+  if(pJurado){
+    html+=`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <div class="mvp-photo" style="border-color:var(--accent-yellow)">${pJurado.photo?`<img src="${pJurado.photo}"/>`:(pJurado.number?'#'+pJurado.number:initials(pJurado.name))}</div>
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:900;color:var(--accent-yellow)">${pJurado.name} <span style="font-size:.7rem;color:var(--text-muted)">JURADO</span></div>
+        <div style="font-size:.72rem;color:var(--text-muted)">🏅 Elegida por el jurado</div>
+      </div>
+    </div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+
+// ── Timeline chart builder ──
+function buildTimelineCard(match) {
+  // Group events into 5-min buckets (10 buckets × 2 halves = 20 total buckets but we show 10)
+  const BUCKETS=10, BUCKET_SIZE=5*60; // 5 min each
+  const ourBuckets  =Array(BUCKETS).fill(0);
+  const rivalBuckets=Array(BUCKETS).fill(0);
+
+  // Our goals from events
+  match.events.forEach(ev=>{
+    if(ev.action==='goal'){
+      const bucket=Math.min(Math.floor(ev.time/BUCKET_SIZE), BUCKETS-1);
+      ourBuckets[bucket]++;
+    }
+  });
+
+  // Rival goals — distribute evenly if we only have the final score
+  // We use events with type='rivalGoal' if present, otherwise approximate
+  const rivalGoalEvents=match.events.filter(ev=>ev.type==='rivalGoal');
+  if(rivalGoalEvents.length>0){
+    rivalGoalEvents.forEach(ev=>{ const bucket=Math.min(Math.floor(ev.time/BUCKET_SIZE),BUCKETS-1); rivalBuckets[bucket]++; });
+  } else {
+    // Distribute rival goals across buckets proportionally (no events recorded)
+    const perBucket=match.scoreAway/BUCKETS;
+    rivalBuckets.fill(0).forEach((_,i)=>rivalBuckets[i]=Math.round(perBucket*10)/10);
+  }
+
+  const maxVal=Math.max(...ourBuckets,...rivalBuckets,1);
+  const labels=['0\'','5\'','10\'','15\'','20\'','25\'','30\'','35\'','40\'','45\''];
+
+  let barsHtml='';
+  ourBuckets.forEach((v,i)=>{
+    const ourH=Math.round(v/maxVal*68);
+    const rivH=Math.round(rivalBuckets[i]/maxVal*68);
+    barsHtml+=`<div class="timeline-bar-group">
+      <div class="timeline-bar our"  style="height:${ourH}px"></div>
+      <div class="timeline-bar rival" style="height:${rivH}px"></div>
+    </div>`;
+  });
+
+  return `<div class="stat-card">
+    <div class="stat-card-title">GOLES POR PERÍODO (5 MIN)</div>
+    <div class="timeline-chart">
+      <div class="timeline-bars">${barsHtml}</div>
+      <div class="timeline-halftime"></div>
+      <div class="timeline-halftime-label">DESCANSO</div>
+    </div>
+    <div class="timeline-legend">
+      <span><span class="timeline-legend-dot" style="background:var(--accent-teal)"></span>${match.myTeamName}</span>
+      <span><span class="timeline-legend-dot" style="background:var(--accent-red)"></span>${match.rivalTeamName}</span>
+    </div>
+  </div>`;
+}
+
+// ── Position map builder ──
+function buildPositionMapCard(match) {
+  const posData={};
+  match.players.forEach(p=>{
+    p.positions.filter(x=>x&&x!=='--'&&x!=='SUP').forEach(pos=>{
+      if(!posData[pos]) posData[pos]={goals:0,shots:0};
+      posData[pos].goals+=p.stats.goals;
+      posData[pos].shots+=p.stats.goals+p.stats.misses;
+    });
+  });
+
+  const positions=Object.keys(posData);
+  if(positions.length===0) return '';
+
+  let cells='';
+  positions.forEach(pos=>{
+    const d=posData[pos];
+    const pct=d.shots>0?Math.round(d.goals/d.shots*100):0;
+    const cls=pct>=60?'strong':pct>=35?'neutral':'weak';
+    cells+=`<div class="pos-map-cell ${cls}">
+      <div class="pos-map-pos">${pos}</div>
+      <div class="pos-map-pct ${cls}">${d.shots>0?pct+'%':'—'}</div>
+      <div class="pos-map-shots">${d.goals}/${d.shots} lanz.</div>
+    </div>`;
+  });
+
+  return `<div class="stat-card">
+    <div class="stat-card-title">EFICACIA POR POSICIÓN</div>
+    <div class="pos-map-grid">${cells}</div>
+    <div style="display:flex;gap:12px;margin-top:8px;font-family:'Barlow Condensed',sans-serif;font-size:.62rem;color:var(--text-muted)">
+      <span style="color:var(--accent-teal)">■ FUERTE ≥60%</span>
+      <span style="color:var(--accent-yellow)">■ MEDIO 35–59%</span>
+      <span style="color:var(--accent-red)">■ DÉBIL &lt;35%</span>
+    </div>
+  </div>`;
+}
+
+// ── Weak points builder ──
+function buildWeakPointsCard(match, isAccumulated=false) {
+  const points=[];
+  const totalShots=match.players.reduce((a,p)=>a+p.stats.goals+p.stats.misses,0);
+  const totalGoals=match.players.reduce((a,p)=>a+p.stats.goals,0);
+  const totalTO   =match.players.reduce((a,p)=>a+p.stats.turnovers,0);
+  const totalSus  =match.players.reduce((a,p)=>a+p.stats.suspensions,0);
+  const totalRed  =match.players.reduce((a,p)=>a+p.stats.redCards,0);
+  const eff=totalShots>0?Math.round(totalGoals/totalShots*100):0;
+
+  // Shooting efficiency
+  if(eff<40&&totalShots>=5)      points.push({cls:'danger', icon:'🎯', title:`Baja eficacia (${eff}%)`, desc:`Solo ${totalGoals} goles en ${totalShots} lanzamientos. Trabajar definición y selección de tiro.`});
+  else if(eff<55&&totalShots>=5) points.push({cls:'warning',icon:'🎯', title:`Eficacia mejorable (${eff}%)`, desc:`Margen para mejorar la selección de tiro desde cada posición.`});
+  else if(totalShots>=5)         points.push({cls:'ok',     icon:'🎯', title:`Buena eficacia (${eff}%)`, desc:`El equipo convirtió bien sus oportunidades.`});
+
+  // Turnovers
+  if(totalTO>=8)      points.push({cls:'danger', icon:'🔄', title:`Demasiadas pérdidas (${totalTO})`, desc:`Alta tasa de pérdidas. Revisar la distribución bajo presión y decisiones en ataque.`});
+  else if(totalTO>=5) points.push({cls:'warning',icon:'🔄', title:`Pérdidas a reducir (${totalTO})`, desc:`Cuidar mejor la pelota, especialmente en transiciones.`});
+
+  // Discipline
+  if(totalRed>0)       points.push({cls:'danger', icon:'🟥', title:`${totalRed} tarjeta${totalRed>1?'s':''} roja${totalRed>1?'s':''}`, desc:`Trabajar control emocional y decisiones bajo presión.`});
+  if(totalSus>=4)      points.push({cls:'danger', icon:'⏱️', title:`Muchas exclusiones (${totalSus})`, desc:`${totalSus} exclusiones de 2 min dejan al equipo en desventaja numérica. Disciplina táctica.`});
+  else if(totalSus>=2) points.push({cls:'warning',icon:'⏱️', title:`Exclusiones a reducir (${totalSus})`, desc:`Cuidar las faltas en situaciones de defensa.`});
+
+  // Position weak spots
+  const posData={};
+  match.players.forEach(p=>p.positions.filter(x=>x&&x!=='--'&&x!=='SUP').forEach(pos=>{
+    if(!posData[pos]) posData[pos]={goals:0,shots:0};
+    posData[pos].goals+=p.stats.goals; posData[pos].shots+=p.stats.goals+p.stats.misses;
+  }));
+  const weakPos=Object.entries(posData).filter(([,d])=>d.shots>=2&&Math.round(d.goals/d.shots*100)<35);
+  if(weakPos.length>0){
+    const list=weakPos.map(([pos,d])=>`${pos} (${Math.round(d.goals/d.shots*100)}%)`).join(', ');
+    points.push({cls:'warning',icon:'📍', title:`Posiciones débiles: ${list}`, desc:`Bajo porcentaje de conversión desde estas posiciones. Trabajar en entrenamiento.`});
+  }
+
+  // Conceded goals
+  const conceded=match.scoreAway||0;
+  if(!isAccumulated){
+    if(conceded>=20)      points.push({cls:'danger', icon:'🛡️', title:`Defensa bajo presión (${conceded} goles recibidos)`, desc:`Alta cantidad de goles recibidos. Revisar sistema defensivo y cobertura.`});
+    else if(conceded>=12) points.push({cls:'warning',icon:'🛡️', title:`Defensa a reforzar (${conceded} recibidos)`, desc:`Trabajar en coordinación defensiva y marcación.`});
+  }
+
+  if(points.length===0) return `<div class="stat-card"><div class="stat-card-title">🔎 ANÁLISIS TÁCTICO</div><div class="no-weak-points">✅ Sin puntos débiles detectados en este partido</div></div>`;
+
+  return `<div class="stat-card"><div class="stat-card-title">🔎 PUNTOS A TRABAJAR</div>
+    <div class="weak-points-list">
+      ${points.map(pt=>`<div class="weak-point-item ${pt.cls}"><div class="weak-point-icon">${pt.icon}</div><div class="weak-point-text"><div class="weak-point-title">${pt.title}</div><div class="weak-point-desc">${pt.desc}</div></div></div>`).join('')}
+    </div>
+  </div>`;
+}
+
 
 // ══════════════════════════════════════════════
 // PDF EXPORT

@@ -217,12 +217,35 @@
 <!-- ═══════════════════════════════════════
      MATCH FINISHED BANNER
 ═══════════════════════════════════════ -->
-<div class="half-change-banner" id="matchFinishedBanner">
+<div class="half-change-banner match-finished-banner" id="matchFinishedBanner">
   <div class="half-change-icon">🏁</div>
   <div class="half-change-title">PARTIDO FINALIZADO</div>
   <div class="half-change-sub" id="finalScoreText"></div>
-  <button class="btn-start-second" onclick="goToFinalStats()">VER ESTADÍSTICAS →</button>
+
+  <!-- Auto MVP -->
+  <div class="mvp-auto-block" id="mvpAutoBlock">
+    <div class="mvp-auto-label">⭐ MVP DEL PARTIDO</div>
+    <div class="mvp-auto-player" id="mvpAutoPlayer"></div>
+  </div>
+
+  <!-- Jurado MVP -->
+  <div class="mvp-jurado-row" id="mvpJuradoRow">
+    <div class="mvp-jurado-label" id="mvpJuradoLabel">🏅 MVP del jurado: <span id="mvpJuradoName">—</span></div>
+    <button class="btn-mvp-jurado" onclick="openMvpJuradoPicker()">Asignar</button>
+  </div>
+
+  <button class="btn-start-second" onclick="goToFinalStats()" style="margin-top:12px">VER ESTADÍSTICAS →</button>
 </div>
+
+<!-- MVP JURADO PICKER -->
+<div class="bottom-sheet-overlay" id="mvpPickerOverlay" onclick="closeMvpJuradoPicker()"></div>
+<div class="bottom-sheet" id="mvpPickerSheet">
+  <div class="sheet-handle"></div>
+  <div class="slot-picker-title">🏅 MVP del jurado — ¿Quién fue?</div>
+  <div id="mvpPickerList" class="slot-picker-list"></div>
+  <button class="btn-sheet-close" onclick="closeMvpJuradoPicker()">CANCELAR</button>
+</div>
+
 
 <!-- ═══════════════════════════════════════
      BOTTOM SHEET: ACCIONES JUGADORA
