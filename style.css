@@ -859,3 +859,169 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Barlow',sans-serif
 .weak-point-title { font-family: 'Barlow Condensed', sans-serif; font-size: .9rem; font-weight: 700; color: var(--text-primary); }
 .weak-point-desc  { font-size: .75rem; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
 .no-weak-points { text-align: center; padding: 20px; color: var(--accent-teal); font-family: 'Barlow Condensed', sans-serif; font-size: .9rem; }
+
+/* ── RIVAL GOAL POSITION GRID ── */
+.rival-goal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.rival-pos-btn {
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 14px 6px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.rival-pos-btn:active {
+  border-color: var(--accent-red);
+  background: rgba(255,59,92,.1);
+}
+
+/* ── DEFENSIVE MAP CELLS ── */
+.pos-map-cell.def-clean   { border-color: rgba(0,212,180,.5); background: rgba(0,212,180,.06); }
+.pos-map-cell.def-warning { border-color: rgba(255,193,7,.45); background: rgba(255,193,7,.05); }
+.pos-map-cell.def-danger  { border-color: rgba(255,59,92,.5); background: rgba(255,59,92,.07); }
+.pos-map-pct.def-clean    { color: var(--accent-teal); font-size: 1rem; }
+.pos-map-pct.def-warning  { color: var(--accent-yellow); }
+.pos-map-pct.def-danger   { color: var(--accent-red); }
+
+/* ── RIVAL GOAL POSITION PICKER ── */
+.rival-pos-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.rival-pos-btn {
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 6px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s, background .15s;
+}
+.rival-pos-btn:active {
+  border-color: var(--accent-red);
+  background: rgba(255,59,92,.1);
+}
+
+/* ── HEAT MAP (ofensivo + defensivo) ── */
+.heatmap-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.heatmap-half { }
+.heatmap-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .62rem; font-weight: 700; letter-spacing: .12em;
+  margin-bottom: 8px; text-align: center;
+}
+.heatmap-title.our   { color: var(--accent-teal); }
+.heatmap-title.rival { color: var(--accent-red);  }
+.heatmap-court {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 5/7;
+}
+.heatmap-court svg { width: 100%; height: 100%; display: block; }
+.heatmap-slot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  pointer-events: none;
+}
+.heatmap-bubble {
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  line-height: 1;
+  transition: all .3s;
+  border: 1.5px solid rgba(255,255,255,.2);
+}
+.heatmap-pos-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: .42rem; font-weight: 700;
+  color: rgba(255,255,255,.6);
+  background: rgba(0,0,0,.5);
+  padding: 0 2px; border-radius: 2px;
+}
+
+/* ── RIVAL GOAL POSITION PICKER ── */
+.rival-pos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 4px 0 12px;
+}
+.rival-pos-btn {
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+.rival-pos-btn:active { border-color: var(--accent-red); background: rgba(255,59,92,.1); }
+.rival-pos-btn-id   { font-size: 1.1rem; font-weight: 900; color: var(--text-primary); }
+.rival-pos-btn-name { font-size: .6rem; color: var(--text-muted); margin-top: 2px; letter-spacing: .05em; }
+
+/* ── DUAL HEATMAP ── */
+.heatmap-dual { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+.heatmap-side { }
+.heatmap-side-title {
+  font-family: 'Barlow Condensed', sans-serif; font-size: .65rem; font-weight: 700;
+  letter-spacing: .15em; margin-bottom: 6px; text-align: center;
+}
+.heatmap-side-title.our    { color: var(--accent-teal); }
+.heatmap-side-title.rival  { color: var(--accent-red); }
+.heatmap-court-wrap {
+  position: relative; width: 100%; padding-bottom: 140%;
+  background: #1a3a5c; border-radius: 6px; overflow: hidden;
+}
+.heatmap-court-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+.heatmap-slots { position: absolute; inset: 0; }
+.heatmap-slot {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center;
+}
+.heatmap-slot-bubble {
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
+  transition: all .2s; border: 1.5px solid transparent;
+}
+.heatmap-slot-pos {
+  font-family: 'Barlow Condensed', sans-serif; font-size: .45rem;
+  color: rgba(255,255,255,.6); margin-top: 1px; font-weight: 700;
+}
+
+/* ── DEFENSIVE HEATMAP CELLS ── */
+.pos-map-cell.def-clean   { border-color: rgba(0,212,180,.4); background: rgba(0,212,180,.06); }
+.pos-map-cell.def-warning { border-color: rgba(255,193,7,.45); background: rgba(255,193,7,.06); }
+.pos-map-cell.def-danger  { border-color: rgba(255,59,92,.5); background: rgba(255,59,92,.08); }
+.pos-map-pct.def-clean    { color: var(--accent-teal); }
+.pos-map-pct.def-warning  { color: var(--accent-yellow); }
+.pos-map-pct.def-danger   { color: var(--accent-red); }

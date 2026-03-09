@@ -546,7 +546,42 @@ function updateScoreUI() {
 
 function rivalGoal() {
   if(!activeMatch) return;
-  activeMatch.scoreAway++; updateScoreUI(); saveMatch(activeMatch); showToast('⚠️ Gol rival registrado');
+  const grid = document.getElementById('rivalGoalGrid');
+  grid.innerHTML = '';
+  const RIVAL_POSITIONS = [
+    { id:'EI',  name:'Extremo izq.' },
+    { id:'LI',  name:'Lateral izq.' },
+    { id:'CT',  name:'Central'      },
+    { id:'LD',  name:'Lateral der.' },
+    { id:'ED',  name:'Extremo der.' },
+    { id:'PV',  name:'Pivote'       },
+    { id:'7M',  name:'7 metros'     },
+    { id:'CT2', name:'Contraataque' },
+    { id:'?',   name:'Desconocida'  },
+  ];
+  RIVAL_POSITIONS.forEach(pos => {
+    const btn = document.createElement('div');
+    btn.className = 'rival-pos-btn';
+    btn.innerHTML = `<div class="rival-pos-btn-id">${pos.id}</div><div class="rival-pos-btn-name">${pos.name}</div>`;
+    btn.onclick = () => recordRivalGoal(pos.id);
+    grid.appendChild(btn);
+  });
+  document.getElementById('rivalGoalOverlay').classList.add('active');
+  document.getElementById('rivalGoalSheet').classList.add('active');
+}
+
+function closeRivalGoalSheet() {
+  document.getElementById('rivalGoalOverlay').classList.remove('active');
+  document.getElementById('rivalGoalSheet').classList.remove('active');
+}
+
+function recordRivalGoal(posId) {
+  closeRivalGoalSheet();
+  activeMatch.scoreAway++;
+  activeMatch.events.push({ time: matchElapsed(), type: 'rivalGoal', pos: posId });
+  updateScoreUI();
+  saveMatch(activeMatch);
+  showToast(`⚠️ Gol rival desde ${posId}`);
 }
 
 // ══════════════════════════════════════════════
@@ -995,40 +1030,74 @@ function buildTimelineCard(match) {
   </div>`;
 }
 
-// ── Position map builder ──
+// ── Position map builder (offensive + defensive) ──
 function buildPositionMapCard(match) {
-  const posData={};
+  // Offensive: goals/shots by player positions
+  const offData={};
   match.players.forEach(p=>{
     p.positions.filter(x=>x&&x!=='--'&&x!=='SUP').forEach(pos=>{
-      if(!posData[pos]) posData[pos]={goals:0,shots:0};
-      posData[pos].goals+=p.stats.goals;
-      posData[pos].shots+=p.stats.goals+p.stats.misses;
+      if(!offData[pos]) offData[pos]={goals:0,shots:0};
+      offData[pos].goals+=p.stats.goals;
+      offData[pos].shots+=p.stats.goals+p.stats.misses;
     });
   });
 
-  const positions=Object.keys(posData);
-  if(positions.length===0) return '';
+  // Defensive: rival goals by position from events
+  const defData={};
+  (match.events||[]).filter(ev=>ev.type==='rivalGoal'&&ev.pos).forEach(ev=>{
+    if(!defData[ev.pos]) defData[ev.pos]={goals:0};
+    defData[ev.pos].goals++;
+  });
+  const totalRivalGoalsTagged = Object.values(defData).reduce((a,d)=>a+d.goals,0);
 
-  let cells='';
-  positions.forEach(pos=>{
-    const d=posData[pos];
+  const offPositions = Object.keys(offData);
+  if(offPositions.length===0&&totalRivalGoalsTagged===0) return '';
+
+  // Offensive map cells
+  let offCells='';
+  offPositions.forEach(pos=>{
+    const d=offData[pos];
     const pct=d.shots>0?Math.round(d.goals/d.shots*100):0;
     const cls=pct>=60?'strong':pct>=35?'neutral':'weak';
-    cells+=`<div class="pos-map-cell ${cls}">
+    offCells+=`<div class="pos-map-cell ${cls}">
       <div class="pos-map-pos">${pos}</div>
       <div class="pos-map-pct ${cls}">${d.shots>0?pct+'%':'—'}</div>
-      <div class="pos-map-shots">${d.goals}/${d.shots} lanz.</div>
+      <div class="pos-map-shots">${d.goals}/${d.shots}</div>
     </div>`;
   });
 
+  // Defensive map cells — show all 7 slots, highlight where rival scored most
+  const maxRivalGoals = Math.max(...Object.values(defData).map(d=>d.goals), 1);
+  let defCells='';
+  if(totalRivalGoalsTagged>0){
+    COURT_SLOTS.forEach(slot=>{
+      const d=defData[slot.id]||{goals:0};
+      const pct=Math.round(d.goals/totalRivalGoalsTagged*100);
+      const cls=d.goals===0?'def-clean':d.goals/maxRivalGoals>=.5?'def-danger':'def-warning';
+      defCells+=`<div class="pos-map-cell ${cls}">
+        <div class="pos-map-pos">${slot.id}</div>
+        <div class="pos-map-pct ${cls}">${d.goals>0?d.goals+'⚽':'✓'}</div>
+        <div class="pos-map-shots">${d.goals>0?pct+'% del total':''}</div>
+      </div>`;
+    });
+  }
+
   return `<div class="stat-card">
-    <div class="stat-card-title">EFICACIA POR POSICIÓN</div>
-    <div class="pos-map-grid">${cells}</div>
+    <div class="stat-card-title">MAPA OFENSIVO — Eficacia por posición</div>
+    <div class="pos-map-grid">${offCells||'<div style="color:var(--text-muted);font-size:.8rem;padding:8px">Sin lanzamientos registrados</div>'}</div>
     <div style="display:flex;gap:12px;margin-top:8px;font-family:'Barlow Condensed',sans-serif;font-size:.62rem;color:var(--text-muted)">
       <span style="color:var(--accent-teal)">■ FUERTE ≥60%</span>
       <span style="color:var(--accent-yellow)">■ MEDIO 35–59%</span>
       <span style="color:var(--accent-red)">■ DÉBIL &lt;35%</span>
     </div>
+    ${totalRivalGoalsTagged>0?`
+    <div class="stat-card-title" style="margin-top:18px">MAPA DEFENSIVO — Goles recibidos por zona</div>
+    <div class="pos-map-grid">${defCells}</div>
+    <div style="display:flex;gap:12px;margin-top:8px;font-family:'Barlow Condensed',sans-serif;font-size:.62rem;color:var(--text-muted)">
+      <span style="color:var(--accent-teal)">■ SIN GOLES</span>
+      <span style="color:var(--accent-yellow)">■ ZONA A CUIDAR</span>
+      <span style="color:var(--accent-red)">■ ZONA MÁS DAÑADA</span>
+    </div>`:''}
   </div>`;
 }
 

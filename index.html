@@ -237,7 +237,7 @@
   <button class="btn-start-second" onclick="goToFinalStats()" style="margin-top:12px">VER ESTADÍSTICAS →</button>
 </div>
 
-<!-- MVP JURADO PICKER -->
+
 <div class="bottom-sheet-overlay" id="mvpPickerOverlay" onclick="closeMvpJuradoPicker()"></div>
 <div class="bottom-sheet" id="mvpPickerSheet">
   <div class="sheet-handle"></div>
@@ -358,6 +358,17 @@
   <div class="settings-storage-info" id="settingsStorageInfo"></div>
 
   <button class="btn-sheet-close" style="margin-top:8px" onclick="closeSettings()">CERRAR</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     RIVAL GOAL POSITION PICKER
+═══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="rivalGoalOverlay" onclick="closeRivalGoalSheet()"></div>
+<div class="bottom-sheet" id="rivalGoalSheet">
+  <div class="sheet-handle"></div>
+  <div class="slot-picker-title">⚠️ GOL RIVAL — ¿Desde qué posición?</div>
+  <div id="rivalGoalGrid" class="rival-pos-grid"></div>
+  <button class="btn-sheet-close" onclick="closeRivalGoalSheet()">CANCELAR</button>
 </div>
 
 <!-- TOAST -->
